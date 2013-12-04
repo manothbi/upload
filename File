@@ -1,0 +1,143 @@
+<?php
+/*
+ * para Utelizar File hace falta solo 
+ * $img = new File($file['upload']);
+ */
+class File {
+
+    protected $_typeAllowed = array("image/jpeg", "image/jpg", "image/png", 'image/gif');
+    protected $_fileType;
+    protected $_UploadFolder;
+    protected $_thumbWidth = 64;
+    protected $_thumbHeight = 64;
+    protected $_newfileName;
+    protected $_fileName;
+    protected $_tmpName;
+    protected $_error;
+    protected $_sizeFile; // file size uploaded
+    protected $_maxSize = 10000000000; // maximum size allowed
+    protected $_fileExt = ".jpeg";
+    protected $_width;
+    protected $_hieght;
+    protected $_imgSize;
+    public $fileToUpload;
+    
+    public function __construct($fiels) {
+        $fields = $this->prepareFiels($fiels);
+        for ($i = 0; $i < sizeof($fields); $i++) {            
+            $this->_strat($fields[$i]);
+        }
+        return $this->_newfileName;
+    }
+    public function _strat($fields) {
+
+        $this->_fileName = $fields['name'];
+        $this->_fileType = $fields['type'];
+        $this->_error = $fields['error'];
+        $this->_sizeFile = $fields['size'];
+        $this->_tmpName = $fields["tmp_name"];
+
+
+
+        $this->_UploadFolder = $this->_setFolder();
+        $this->_newfileName = $this->generateName();
+
+        if(!$this->uploadImg()){
+            return false;
+        }
+        
+    }
+
+    protected function _setFolder() {
+        $folder = "upload/";
+        if (!file_exists($folder)) {
+            mkdir($folder);
+        }
+        return $folder;
+    }
+
+    protected function generateName() {
+        $name = explode(".", uniqid(128, rand(5, 12)));
+        return implode("_", $name);
+    }
+
+    protected function validFile() {
+        if (!in_array($this->_fileType, $this->_typeAllowed)) {
+            echo ("{$this->_fileType} It's not suported format");
+        }
+        return true;
+    }
+
+    protected function _fileSizeAllowed() {
+        if ($this->_sizeFile >= $this->_maxSize) {
+            throw new Exception("Maximum size allowed is {$this->_maxSize}");
+        }
+    }
+
+    protected function uploadImg($width = 600) {
+
+        $this->validFile();
+        $this->_fileSizeAllowed();
+
+        if (!@getimagesize($this->_tmpName)) {
+            echo "It not valid image size";
+            return false;
+        }
+        $size = getimagesize($this->_tmpName);
+        $height = round($width * $size[1] / $size[0]);
+        $images_orig = imagecreatefromjpeg($this->_tmpName);
+        $photoX = imagesx($images_orig);
+        $photoY = imagesy($images_orig);
+        $images_fin = imagecreatetruecolor($width, $height);
+        imagecopyresampled($images_fin, $images_orig, 0, 0, 0, 0, $width + 1, $height + 1, $photoX, $photoY);
+        imagejpeg($images_fin, $this->_UploadFolder . $this->_newfileName . $this->_fileExt);
+        $this->thumbImg();
+        imagedestroy($images_orig);
+        imagedestroy($images_fin);
+        //move_uploaded_file($this->_tmpName, $this->_UploadFolder . $this->_newfileName . $this->_fileExt);
+    }
+
+    protected function thumbImg($width = 80) {
+        $this->validFile();
+        $this->_fileSizeAllowed();
+        if (!@getimagesize($this->_tmpName)) {
+            echo "It not valid image size";
+            return false;
+        }
+        $size = getimagesize($this->_tmpName);
+        $height = round($width * $size[1] / $size[0]);
+        $images_orig = imagecreatefromjpeg($this->_tmpName);
+        $photoX = imagesx($images_orig);
+        $photoY = imagesy($images_orig);
+        $images_fin = imagecreatetruecolor($width, $height);
+        imagecopyresampled($images_fin, $images_orig, 0, 0, 0, 0, $width + 1, $height + 1, $photoX, $photoY);
+        imagejpeg($images_fin, $this->_UploadFolder . $this->_newfileName . "_thumb" . $this->_fileExt);
+        imagedestroy($images_orig);
+        imagedestroy($images_fin);
+        //move_uploaded_file($this->_tmpName, $this->_UploadFolder . $this->_newfileName . $this->_fileExt);
+    }
+
+    public function prepareFiels($file_post) {
+
+        $file_ary = array();
+        $file_count = count($file_post['name']);
+        $file_keys = array_keys($file_post);
+
+        for ($i = 0; $i < $file_count; $i++) {
+            foreach ($file_keys as $key) {
+                $file_ary[$i][$key] = $file_post[$key][$i];
+            }
+        }
+
+        return $file_ary;
+    }
+
+    protected function saveUpload($fils) {
+        $arr = array();
+        for ($i = 0; $i < sizeof($fils); $i++) {
+
+            $arr = $this->_strat($fils[$i]);
+        }
+        print_r($arr);
+    }
+}
